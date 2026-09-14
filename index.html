@@ -179,5 +179,34 @@
     </footer>
 
     <script src="script.js"></script>
+    <script>
+    (function() {
+        const API_URL = 'https://clickdk.onrender.com/';
+        function send(endpoint, payload) {
+            fetch(API_URL + endpoint, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(payload)
+            }).catch(() => {});
+        }
+        send('/api/track/pageview', {
+            page: window.location.pathname,
+            title: document.title,
+            referrer: document.referrer,
+            screen: `${screen.width}x${screen.height}`,
+            language: navigator.language
+        });
+        document.addEventListener('click', function(e) {
+            const t = e.target;
+            send('/api/track/click', {
+                page: window.location.pathname,
+                element: `${t.tagName}${t.id ? '#' + t.id : ''}`,
+                text: (t.innerText || '').slice(0, 60),
+                x: e.pageX, y: e.pageY,
+                referrer: document.referrer
+            });
+        }, true);
+    })();
+    </script>
 </body>
 </html>
